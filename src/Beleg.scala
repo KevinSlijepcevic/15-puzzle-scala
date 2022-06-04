@@ -19,26 +19,42 @@ object Beleg extends App {
   trait Tree {
     def isCorrect: Boolean
     def printTable(): Unit
-    def search(): Unit
+    def printSolution(): Unit
+    def getMaxCost: Int
+    def foundSolution: Boolean
   }
 
-  case object Leaf extends Tree {
+  case class Leaf(cost: Int) extends Tree {
     def isCorrect: Boolean = false
-    def search(): Unit = None
+    def printSolution(): Unit = None
     def printTable(): Unit = None
+    def getMaxCost: Int = cost
+    def foundSolution: Boolean = false
   }
 
   case class Node(down: Tree, up: Tree, left: Tree, right: Tree, value: List[Option[Int]], history: List[Char], cost: Int) extends Tree {
     def isCorrect: Boolean = value.equals(sortedList)
 
-    def search(): Unit = {
+    def printSolution(): Unit = {
       if (isCorrect) println("Path: " + history.toString() + " Moves: " + history.size)
       else {
-        down.search()
-        up.search()
-        left.search()
-        right.search()
+        down.printSolution()
+        up.printSolution()
+        left.printSolution()
+        right.printSolution()
       }
+    }
+
+    def foundSolution: Boolean = {
+      isCorrect || down.foundSolution || up.foundSolution || left.foundSolution || right.foundSolution
+    }
+
+    def getMaxCost: Int = {
+      if (cost < down.getMaxCost) down.getMaxCost
+      else if (cost < up.getMaxCost) up.getMaxCost
+      else if (cost < left.getMaxCost) left.getMaxCost
+      else if (cost < right.getMaxCost) right.getMaxCost
+      else cost
     }
 
     def printTable(): Unit = {
@@ -56,20 +72,20 @@ object Beleg extends App {
     }
   }
 
-  def moveLeft(value: List[Option[Int]], history: List[Char], previousCost: Int): Tree = {
+  def moveLeft(value: List[Option[Int]], history: List[Char], bound: Int): Tree = {
     val emptyIndex = value.indexOf(None)
-    if (emptyIndex % 4 == 0) Leaf
+    if (emptyIndex % 4 == 0) Leaf(0)
     else {
       val newVal = value.slice(0, emptyIndex - 1) ::: None :: value(emptyIndex - 1) :: value.slice(emptyIndex + 1, 16)
       val currentCost = calcHeuristicCost(newVal) + history.size + 1
-      if (currentCost > previousCost) Leaf
+      if (currentCost > bound) Leaf(currentCost)
       else {
         val newHistory = history :+ 'l'
         Node(
-          moveDown(newVal, newHistory, currentCost),
-          moveUp(newVal, newHistory, currentCost),
-          moveLeft(newVal, newHistory, currentCost),
-          Leaf,
+          moveDown(newVal, newHistory, bound),
+          moveUp(newVal, newHistory, bound),
+          moveLeft(newVal, newHistory, bound),
+          Leaf(0),
           newVal,
           newHistory,
           currentCost
@@ -78,20 +94,20 @@ object Beleg extends App {
     }
   }
 
-  def moveRight(value: List[Option[Int]], history: List[Char], previousCost: Int): Tree = {
+  def moveRight(value: List[Option[Int]], history: List[Char], bound: Int): Tree = {
     val emptyIndex = value.indexOf(None)
-    if (emptyIndex == 3 || emptyIndex == 7 || emptyIndex == 11 || emptyIndex == 15) Leaf
+    if (emptyIndex == 3 || emptyIndex == 7 || emptyIndex == 11 || emptyIndex == 15) Leaf(0)
     else {
       val newVal = value.slice(0, emptyIndex) ::: value(emptyIndex + 1) :: None :: value.slice(emptyIndex + 2, 16)
       val currentCost = calcHeuristicCost(newVal) + history.size + 1
-      if (currentCost > previousCost) Leaf
+      if (currentCost > bound) Leaf(currentCost)
       else {
         val newHistory = history :+ 'r'
         Node(
-          moveDown(newVal, newHistory, currentCost),
-          moveUp(newVal, newHistory, currentCost),
-          Leaf,
-          moveRight(newVal, newHistory, currentCost),
+          moveDown(newVal, newHistory, bound),
+          moveUp(newVal, newHistory, bound),
+          Leaf(0),
+          moveRight(newVal, newHistory, bound),
           newVal,
           newHistory,
           currentCost
@@ -100,20 +116,20 @@ object Beleg extends App {
     }
   }
 
-  def moveUp(value: List[Option[Int]], history: List[Char], previousCost: Int): Tree = {
+  def moveUp(value: List[Option[Int]], history: List[Char], bound: Int): Tree = {
     val emptyIndex = value.indexOf(None)
-    if (emptyIndex <= 3) Leaf
+    if (emptyIndex <= 3) Leaf(0)
     else {
       val newVal = value.slice(0, emptyIndex - 4) ::: None :: value.slice(emptyIndex - 3, emptyIndex) ::: value(emptyIndex - 4) :: value.slice(emptyIndex + 1, 16)
       val currentCost = calcHeuristicCost(newVal) + history.size + 1
-      if (currentCost > previousCost) Leaf
+      if (currentCost > bound) Leaf(currentCost)
       else {
         val newHistory = history :+ 'u'
         Node(
-          Leaf,
-          moveUp(newVal, newHistory, currentCost),
-          moveLeft(newVal, newHistory, currentCost),
-          moveRight(newVal, newHistory, currentCost),
+          Leaf(0),
+          moveUp(newVal, newHistory, bound),
+          moveLeft(newVal, newHistory, bound),
+          moveRight(newVal, newHistory, bound),
           newVal,
           newHistory,
           currentCost
@@ -122,20 +138,20 @@ object Beleg extends App {
     }
   }
 
-  def moveDown(value: List[Option[Int]], history: List[Char], previousCost: Int): Tree = {
+  def moveDown(value: List[Option[Int]], history: List[Char], bound: Int): Tree = {
     val emptyIndex = value.indexOf(None)
-    if (emptyIndex >= 12) Leaf
+    if (emptyIndex >= 12) Leaf(0)
     else {
       val newVal = value.slice(0, emptyIndex) ::: value(emptyIndex + 4) :: value.slice(emptyIndex + 1, emptyIndex + 4) ::: None :: value.slice(emptyIndex + 5, 16)
       val currentCost = calcHeuristicCost(newVal) + history.size + 1
-      if (currentCost > previousCost) Leaf
+      if (currentCost > bound) Leaf(currentCost)
       else {
         val newHistory = history :+ 'd'
         Node(
-          moveDown(newVal, newHistory, currentCost),
-          Leaf,
-          moveLeft(newVal, newHistory, currentCost),
-          moveRight(newVal, newHistory, currentCost),
+          moveDown(newVal, newHistory, bound),
+          Leaf(0),
+          moveLeft(newVal, newHistory, bound),
+          moveRight(newVal, newHistory, bound),
           newVal,
           newHistory,
           currentCost
@@ -144,12 +160,12 @@ object Beleg extends App {
     }
   }
 
-  def createTree(value: List[Option[Int]], initCost: Int): Tree = {
+  def createTree(value: List[Option[Int]], bound: Int): Tree = {
     Node(
-      moveDown(value, List(), initCost),
-      moveUp(value, List(), initCost),
-      moveLeft(value, List(), initCost),
-      moveRight(value, List(), initCost),
+      moveDown(value, List(), bound),
+      moveUp(value, List(), bound),
+      moveLeft(value, List(), bound),
+      moveRight(value, List(), bound),
       value,
       List(),
       0
@@ -180,6 +196,17 @@ object Beleg extends App {
       (index / 4, index % 4)
   }
 
+  def startIDA(start: List[Option[Int]]): Unit = {
+    @tailrec
+    def startIDARec(start: List[Option[Int]], bound: Int): Unit = {
+        println("NEW RUN WITH COST: " + bound) // DEBUG
+        val tree = createTree(start, bound)
+        if (tree.foundSolution) tree.printSolution()
+        else startIDARec(start, tree.getMaxCost)
+    }
+    startIDARec(start, calcHeuristicCost(start))
+  }
+
   /*val start = List( nix gut evtl
     Some(15), Some(14), Some(8), Some(12),
     Some(10), Some(11), Some(9), Some(13),
@@ -200,6 +227,27 @@ object Beleg extends App {
     Some(11), Some(2), Some(7), Some(6)
   ) */
 
+  val benniStart1 = List(
+   Some(2), Some(3), Some(4), Some(8),
+   Some(1), Some(6), Some(7), Some(12),
+   Some(5), Some(10), Some(11), Some(15),
+   Some(9), Some(13), Some(14), None
+ )
+
+  val benniStart2 = List(
+    Some(3), Some(4), Some(8), Some(12),
+    Some(2), Some(6), Some(7), Some(15),
+    Some(1), Some(10), Some(11), None,
+    Some(5), Some(9), Some(13), Some(14)
+  )
+
+  val vid = List(
+    Some(7), Some(10), Some(1), Some(14),
+    Some(6), Some(2), Some(9), Some(4),
+    Some(3), Some(11), None, Some(5),
+    Some(8), Some(12), Some(13), Some(15)
+  )
+
 
   val puzzle1 = Array(
     2,  3,  4,  8,
@@ -216,10 +264,11 @@ object Beleg extends App {
   )
 
 
-  val tree = createTree(start, 150)
-  tree.search()
-  tree.printTable()
+  //val tree = createTree(start, 150)
+  //tree.printSolution()
+  //tree.printTable()
   //println(calcHeuristicCost(start))
+  startIDA(start)
 
 }
 
