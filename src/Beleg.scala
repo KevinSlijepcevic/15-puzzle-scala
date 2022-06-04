@@ -1,3 +1,4 @@
+import java.time.LocalDateTime
 import scala.annotation.tailrec
 
 object Beleg extends App {
@@ -16,160 +17,78 @@ object Beleg extends App {
     Some(9), Some(10), Some(11), Some(12),
     Some(13), Some(14), Some(15), None)
 
-  trait Tree {
-    def isCorrect: Boolean
-    def printTable(): Unit
-    def printSolution(): Unit
-    def getMaxCost: Int
-    def foundSolution: Boolean
-  }
-
-  case class Leaf(cost: Int) extends Tree {
-    def isCorrect: Boolean = false
-    def printSolution(): Unit = None
-    def printTable(): Unit = None
-    def getMaxCost: Int = cost
-    def foundSolution: Boolean = false
-  }
-
-  case class Node(down: Tree, up: Tree, left: Tree, right: Tree, value: List[Option[Int]], history: List[Char], cost: Int) extends Tree {
+  case class Node(value: List[Option[Int]], history: List[Char], depth: Int) {
     def isCorrect: Boolean = value.equals(sortedList)
 
-    def printSolution(): Unit = {
-      if (isCorrect) println("Path: " + history.toString() + " Moves: " + history.size)
-      else {
-        down.printSolution()
-        up.printSolution()
-        left.printSolution()
-        right.printSolution()
-      }
+    def nextMoves: List[Node] = {
+      List(
+        Node(moveValueDown(value), history :+ 'd', depth + 1),
+        Node(moveValueUp(value), history :+ 'u', depth + 1),
+        Node(moveValueLeft(value), history :+ 'l', depth + 1),
+        Node(moveValueRight(value), history :+ 'r', depth + 1)
+      ).filter(n => n.value.nonEmpty)
     }
 
-    def foundSolution: Boolean = {
-      isCorrect || down.foundSolution || up.foundSolution || left.foundSolution || right.foundSolution
-    }
+    def printPath(): Unit = println(history)
 
-    def getMaxCost: Int = {
-      if (cost < down.getMaxCost) down.getMaxCost
-      else if (cost < up.getMaxCost) up.getMaxCost
-      else if (cost < left.getMaxCost) left.getMaxCost
-      else if (cost < right.getMaxCost) right.getMaxCost
-      else cost
-    }
-
-    def printTable(): Unit = {
-      println("History: " + history)
-      println("Cost: " + cost)
-      println(value.slice(0, 4))
-      println(value.slice(4, 8))
-      println(value.slice(8, 12))
-      println(value.slice(12, 16))
-      println()
-      down.printTable()
-      up.printTable()
-      left.printTable()
-      right.printTable()
-    }
   }
 
-  def moveLeft(value: List[Option[Int]], history: List[Char], bound: Int): Tree = {
+  def moveValueLeft(value: List[Option[Int]]): List[Option[Int]] = {
     val emptyIndex = value.indexOf(None)
-    if (emptyIndex % 4 == 0) Leaf(0)
-    else {
-      val newVal = value.slice(0, emptyIndex - 1) ::: None :: value(emptyIndex - 1) :: value.slice(emptyIndex + 1, 16)
-      val currentCost = calcHeuristicCost(newVal) + history.size + 1
-      if (currentCost > bound) Leaf(currentCost)
-      else {
-        val newHistory = history :+ 'l'
-        Node(
-          moveDown(newVal, newHistory, bound),
-          moveUp(newVal, newHistory, bound),
-          moveLeft(newVal, newHistory, bound),
-          Leaf(0),
-          newVal,
-          newHistory,
-          currentCost
-        )
-      }
-    }
+    if (emptyIndex % 4 == 0) List()
+    else value.slice(0, emptyIndex - 1) ::: None :: value(emptyIndex - 1) :: value.slice(emptyIndex + 1, 16)
   }
 
-  def moveRight(value: List[Option[Int]], history: List[Char], bound: Int): Tree = {
+  def moveValueRight(value: List[Option[Int]]): List[Option[Int]] = {
     val emptyIndex = value.indexOf(None)
-    if (emptyIndex == 3 || emptyIndex == 7 || emptyIndex == 11 || emptyIndex == 15) Leaf(0)
-    else {
-      val newVal = value.slice(0, emptyIndex) ::: value(emptyIndex + 1) :: None :: value.slice(emptyIndex + 2, 16)
-      val currentCost = calcHeuristicCost(newVal) + history.size + 1
-      if (currentCost > bound) Leaf(currentCost)
-      else {
-        val newHistory = history :+ 'r'
-        Node(
-          moveDown(newVal, newHistory, bound),
-          moveUp(newVal, newHistory, bound),
-          Leaf(0),
-          moveRight(newVal, newHistory, bound),
-          newVal,
-          newHistory,
-          currentCost
-        )
-      }
-    }
+    if (emptyIndex == 3 || emptyIndex == 7 || emptyIndex == 11 || emptyIndex == 15) List()
+    else value.slice(0, emptyIndex) ::: value(emptyIndex + 1) :: None :: value.slice(emptyIndex + 2, 16)
   }
 
-  def moveUp(value: List[Option[Int]], history: List[Char], bound: Int): Tree = {
+  def moveValueUp(value: List[Option[Int]]): List[Option[Int]] = {
     val emptyIndex = value.indexOf(None)
-    if (emptyIndex <= 3) Leaf(0)
-    else {
-      val newVal = value.slice(0, emptyIndex - 4) ::: None :: value.slice(emptyIndex - 3, emptyIndex) ::: value(emptyIndex - 4) :: value.slice(emptyIndex + 1, 16)
-      val currentCost = calcHeuristicCost(newVal) + history.size + 1
-      if (currentCost > bound) Leaf(currentCost)
-      else {
-        val newHistory = history :+ 'u'
-        Node(
-          Leaf(0),
-          moveUp(newVal, newHistory, bound),
-          moveLeft(newVal, newHistory, bound),
-          moveRight(newVal, newHistory, bound),
-          newVal,
-          newHistory,
-          currentCost
-        )
-      }
-    }
+    if (emptyIndex <= 3) List()
+    else value.slice(0, emptyIndex - 4) ::: None :: value.slice(emptyIndex - 3, emptyIndex) ::: value(emptyIndex - 4) :: value.slice(emptyIndex + 1, 16)
   }
 
-  def moveDown(value: List[Option[Int]], history: List[Char], bound: Int): Tree = {
+  def moveValueDown(value: List[Option[Int]]): List[Option[Int]] = {
     val emptyIndex = value.indexOf(None)
-    if (emptyIndex >= 12) Leaf(0)
+    if (emptyIndex >= 12) List()
+    else value.slice(0, emptyIndex) ::: value(emptyIndex + 4) :: value.slice(emptyIndex + 1, emptyIndex + 4) ::: None :: value.slice(emptyIndex + 5, 16)
+  }
+
+  def search(node: Node, bound: Int): (Node, Int) = {
+    //println("search: " + bound)
+    val f = calcHeuristicCost(node.value) + node.depth
+    if (f > bound) (null, f)
+    else if (node.isCorrect) (node, 0)
     else {
-      val newVal = value.slice(0, emptyIndex) ::: value(emptyIndex + 4) :: value.slice(emptyIndex + 1, emptyIndex + 4) ::: None :: value.slice(emptyIndex + 5, 16)
-      val currentCost = calcHeuristicCost(newVal) + history.size + 1
-      if (currentCost > bound) Leaf(currentCost)
-      else {
-        val newHistory = history :+ 'd'
-        Node(
-          moveDown(newVal, newHistory, bound),
-          Leaf(0),
-          moveLeft(newVal, newHistory, bound),
-          moveRight(newVal, newHistory, bound),
-          newVal,
-          newHistory,
-          currentCost
-        )
+      val minInit = Integer.MAX_VALUE
+      val nextNodes = node.nextMoves
+      @tailrec
+      def searchRec(nextNodes: List[Node], min: Int): (Node, Int) = {
+        nextNodes match {
+          case Nil => (null, min)
+          case h::t =>
+            val searchResult = search(h, bound)
+            if (searchResult._1 != null) searchResult
+            else if (searchResult._2 < min && searchResult._2 != 0) searchRec(t, searchResult._2)
+            else searchRec(t, min)
+        }
       }
+      searchRec(nextNodes, minInit)
     }
   }
 
-  def createTree(value: List[Option[Int]], bound: Int): Tree = {
-    Node(
-      moveDown(value, List(), bound),
-      moveUp(value, List(), bound),
-      moveLeft(value, List(), bound),
-      moveRight(value, List(), bound),
-      value,
-      List(),
-      0
-    )
+  def solvePuzzle(root: Node): Node = {
+    val initBound = calcHeuristicCost(root.value)
+    @tailrec
+    def solvePuzzleRec(node: Node, bound: Int): Node = {
+      val searchResult = search(node, bound)
+      if (searchResult._1 != null) searchResult._1
+      else solvePuzzleRec(node, searchResult._2)
+    }
+    solvePuzzleRec(root, initBound)
   }
 
   def calcHeuristicCost(value: List[Option[Int]]): Int = {
@@ -194,17 +113,6 @@ object Beleg extends App {
 
   def calcIndexIntoCoords(index: Int): (Int, Int) = {
       (index / 4, index % 4)
-  }
-
-  def startIDA(start: List[Option[Int]]): Unit = {
-    @tailrec
-    def startIDARec(start: List[Option[Int]], bound: Int): Unit = {
-        println("NEW RUN WITH COST: " + bound) // DEBUG
-        val tree = createTree(start, bound)
-        if (tree.foundSolution) tree.printSolution()
-        else startIDARec(start, tree.getMaxCost)
-    }
-    startIDARec(start, calcHeuristicCost(start))
   }
 
   /*val start = List( nix gut evtl
@@ -248,6 +156,13 @@ object Beleg extends App {
     Some(8), Some(12), Some(13), Some(15)
   )
 
+  val easy = List(
+    Some(1), Some(2), Some(3), Some(4),
+    Some(5), Some(6), Some(7), Some(8),
+    Some(9), Some(10), Some(11), Some(12),
+    Some(13), None, Some(14), Some(15)
+  )
+
 
   val puzzle1 = Array(
     2,  3,  4,  8,
@@ -263,14 +178,12 @@ object Beleg extends App {
     5,  9, 13,  0
   )
 
-
-  //val tree = createTree(start, 150)
-  //tree.printSolution()
-  //tree.printTable()
-  //println(calcHeuristicCost(start))
-  startIDA(start)
-
+  println("Start: " + LocalDateTime.now)
+  val resultNode = solvePuzzle(Node(start, List(), 0))
+  resultNode.printPath()
+  println("Ende: " + LocalDateTime.now)
 }
+
 
 
 // f = g+h
