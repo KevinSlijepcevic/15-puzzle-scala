@@ -2,16 +2,6 @@ import java.time.LocalDateTime
 import scala.annotation.tailrec
 
 object Beleg extends App {
-  // Beleg
-  // 16 Verschiebe Puzzle programmieren also 1 2 3 4 / 5 6 7 8 / 9 10 11 12 / 13 14 15 16
-
-  // IDA*-Suche
-  // iterative Tiefensuche
-  // nicht erlaubt: var und return
-  // map verwenden
-
-  // Abgabe: 20.06
-
   val sortedList = List(Some(1), Some(2), Some(3), Some(4),
     Some(5), Some(6), Some(7), Some(8),
     Some(9), Some(10), Some(11), Some(12),
@@ -21,12 +11,40 @@ object Beleg extends App {
     def isCorrect: Boolean = value.equals(sortedList)
 
     def nextMoves: List[Node] = {
-      List(
-        Node(moveValueDown(value), history :+ 'd', depth + 1),
-        Node(moveValueUp(value), history :+ 'u', depth + 1),
-        Node(moveValueLeft(value), history :+ 'l', depth + 1),
-        Node(moveValueRight(value), history :+ 'r', depth + 1)
-      ).filter(n => n.value.nonEmpty)
+      history match {
+        case Nil =>
+          List(
+            Node(moveValueUp(value), history :+ 'u', depth + 1),
+            Node(moveValueDown(value), history :+ 'd', depth + 1),
+            Node(moveValueLeft(value), history :+ 'l', depth + 1),
+            Node(moveValueRight(value), history :+ 'r', depth + 1)
+          ).filter(n => n.value.nonEmpty)
+        case _ =>
+          if (history.last == 'd')
+            List(
+              Node(moveValueDown(value), history :+ 'd', depth + 1),
+              Node(moveValueLeft(value), history :+ 'l', depth + 1),
+              Node(moveValueRight(value), history :+ 'r', depth + 1)
+            ).filter(n => n.value.nonEmpty)
+          else if (history.last == 'u')
+            List(
+              Node(moveValueUp(value), history :+ 'u', depth + 1),
+              Node(moveValueLeft(value), history :+ 'l', depth + 1),
+              Node(moveValueRight(value), history :+ 'r', depth + 1)
+            ).filter(n => n.value.nonEmpty)
+          else if (history.last == 'l')
+            List(
+              Node(moveValueDown(value), history :+ 'd', depth + 1),
+              Node(moveValueUp(value), history :+ 'u', depth + 1),
+              Node(moveValueLeft(value), history :+ 'l', depth + 1),
+            ).filter(n => n.value.nonEmpty)
+          else
+            List(
+              Node(moveValueDown(value), history :+ 'd', depth + 1),
+              Node(moveValueUp(value), history :+ 'u', depth + 1),
+              Node(moveValueRight(value), history :+ 'r', depth + 1)
+            ).filter(n => n.value.nonEmpty)
+      }
     }
 
     def printPath(): Unit = println(history)
@@ -58,7 +76,6 @@ object Beleg extends App {
   }
 
   def search(node: Node, bound: Int): (Node, Int) = {
-    //println("search: " + bound)
     val f = calcHeuristicCost(node.value) + node.depth
     if (f > bound) (null, f)
     else if (node.isCorrect) (node, 0)
@@ -163,31 +180,9 @@ object Beleg extends App {
     Some(13), None, Some(14), Some(15)
   )
 
-
-  val puzzle1 = Array(
-    2,  3,  4,  8,
-    1,  6,  7, 12,
-    5, 10, 11, 15,
-    9, 13, 14,  0
-  )
-
-  val puzzle2 = Array(
-    3,  4,  8, 12,
-    2,  6,  7, 15,
-    1, 10, 11, 14,
-    5,  9, 13,  0
-  )
-
-  println("Start: " + LocalDateTime.now)
-  val resultNode = solvePuzzle(Node(start, List(), 0))
+  val t1 = System.nanoTime
+  val resultNode = solvePuzzle(Node(benniStart2, List(), 0))
+  val t2 = System.nanoTime
   resultNode.printPath()
-  println("Ende: " + LocalDateTime.now)
+  println("Dauer: " + (t2 - t1) / 1e9d + "s")
 }
-
-
-
-// f = g+h
-// mit h: Länge des Pfaddes vom Start bis zum aktuellen Knoten
-// h: Heuristische Schätzfunktion, darf Entfernung bis zum Ziel nicht überschätzen
-// Dynamisch erzeigen, also interativ einfach depth bei createTree mitgeben
-// mit Manhatten Metrik
