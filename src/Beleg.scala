@@ -110,16 +110,16 @@ object Beleg extends App {
 
   def calcHeuristicCost(value: List[Option[Int]]): Int = {
     @tailrec
-    def calcHeuristicCostRek(value: List[Option[Int]], acc: Int, index: Int): Int = {
+    def calcHeuristicCostRec(value: List[Option[Int]], acc: Int, index: Int): Int = {
         value match {
           case Nil => acc
           case h::t => h match {
-            case Some(x) => calcHeuristicCostRek(t, acc + calcOffset(index, x - 1), index + 1)
-            case None => calcHeuristicCostRek(t, acc, index + 1)
+            case Some(x) => calcHeuristicCostRec(t, acc + calcOffset(index, x - 1), index + 1)
+            case None => calcHeuristicCostRec(t, acc, index + 1)
           }
         }
     }
-    calcHeuristicCostRek(value, 0, 0)
+    calcHeuristicCostRec(value, 0, 0)
   }
 
   def calcOffset(actualIndex: Int, shouldIndex: Int): Int = {
@@ -132,7 +132,7 @@ object Beleg extends App {
       (index / 4, index % 4)
   }
 
-  /*val start = List( nix gut evtl
+  /*val start = List(
     Some(15), Some(14), Some(8), Some(12),
     Some(10), Some(11), Some(9), Some(13),
     Some(2), Some(6), Some(5), Some(1),
@@ -184,5 +184,5 @@ object Beleg extends App {
   val resultNode = solvePuzzle(Node(benniStart2, List(), 0))
   val t2 = System.nanoTime
   resultNode.printPath()
-  println("Dauer: " + (t2 - t1) / 1e9d + "s")
+  println("Exec Time: " + (t2 - t1) / 1e9d + "s")
 }
